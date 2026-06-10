@@ -1,7 +1,7 @@
 {
-  "name": "Inchiostro UV — steganografia testuale",
-  "short_name": "Inchiostro UV",
-  "description": "Nascondi messaggi dentro testo normale con caratteri a larghezza zero e cifratura AES-256-GCM.",
+  "name": "Lente UV — analisi forense PDF",
+  "short_name": "Lente UV",
+  "description": "Analizza un PDF nel browser e scopri dati nascosti, file incorporati, JavaScript, cifratura e steganografia testuale. Tutto in locale.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

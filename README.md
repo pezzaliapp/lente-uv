@@ -1,68 +1,58 @@
-# Inchiostro UV
+# Lente UV
 
-PWA di steganografia testuale: nasconde un messaggio dentro un testo dall'aspetto
-normale usando caratteri Unicode a larghezza zero (`U+200B`, `U+200C`), con cifratura
-opzionale **AES-256-GCM** (chiave derivata con PBKDF2, 150k iterazioni).
+PWA di **analisi forense per PDF**: trascini un documento e scopri cosa nasconde.
+Tutto avviene **nel browser** — il file non viene caricato da nessuna parte.
 
-Tutto gira **lato client**: nessun dato lascia il dispositivo, nessun backend, nessuna
-dipendenza esterna. Funziona offline una volta installata.
+Controlla:
+- **Coda del file** — byte aggiunti dopo l'ultimo `%%EOF` (nascondiglio classico).
+- **Indicatori strutturali** — `/JavaScript`, `/Launch`, `/OpenAction`, `/EmbeddedFile`, form, URI…
+- **Protezione e allegati** — se il PDF è cifrato/protetto, file incorporati, metadati.
+- **Steganografia testuale** — caratteri a larghezza zero nel testo (lo stesso metodo di Inchiostro UV).
+- **Stream sospetti** — blocchi ad alta entropia (possibile dato cifrato/compresso).
+
+> **Rileva, non decifra.** Segnala la presenza di dati nascosti/cifrati; il contenuto cifrato
+> resta illeggibile senza chiave. "Nessun indicatore" non è una prova di innocenza: stego nei
+> pixel (LSB) o tecniche dedicate sfuggono a un controllo generico.
 
 ## File
 
 ```
-index.html          l'app (funziona anche aperta da sola, doppio click)
-manifest.json       configurazione PWA (installabile)
-service-worker.js   cache offline
-icons/              icone PWA (192, 512 maskable, apple-touch, favicon)
+index.html          l'app (usa pdf.js da CDN per estrarre il testo)
+manifest.json       configurazione PWA
+service-worker.js   cache offline (anche dei file pdf.js)
+icons/              icone PWA
 ```
 
-## Pubblicarla — 3 strade (dalla più veloce)
+## Pubblicarla — come Inchiostro UV
 
-Sono tutti **siti statici**: basta servire la cartella. Niente build, niente Node.
-
-### 1. Netlify Drop — la più veloce (nessun account git, ~30 secondi)
-1. Vai su https://app.netlify.com/drop
-2. Trascina l'intera cartella `stego-app` nella pagina.
-3. Ottieni subito un link `https://nome-random.netlify.app`. Fatto.
-
-> Ideale se vuoi solo un link condivisibile in fretta. Per un dominio fisso fai login
-> (anche con account GitHub) e rinomina il sito.
-
-### 2. GitHub Pages — la più "tua" (link tied al repo, gratis, permanente)
-Richiede un account GitHub e git installato. Dalla cartella `stego-app`:
+### 1. GitHub Pages (link permanente)
+Crea un repo vuoto su GitHub, poi dalla cartella `lente-app`:
 
 ```bash
 git init
 git add .
-git commit -m "Inchiostro UV — stego PWA"
+git commit -m "Lente UV — analisi forense PDF"
 git branch -M main
-# crea prima un repo vuoto su github.com, poi:
-git remote add origin https://github.com/TUO-UTENTE/inchiostro-uv.git
+git remote add origin https://github.com/TUO-UTENTE/lente-uv.git
 git push -u origin main
 ```
 
-Poi su GitHub: **Settings → Pages → Source: Deploy from a branch → main / (root) → Save**.
-Dopo un minuto l'app è online su `https://TUO-UTENTE.github.io/inchiostro-uv/`.
+Poi: **Settings → Pages → Deploy from a branch → main → / (root) → Save**.
+Online su `https://TUO-UTENTE.github.io/lente-uv/`.
 
-> Nota: per HTTPS e service worker GitHub Pages va benissimo. Il path è sotto
-> sottocartella, ma il manifest usa percorsi relativi, quindi funziona senza modifiche.
+> Se preferisci il browser: nel repo vuoto clicca "uploading an existing file" e trascina
+> il **contenuto** di `lente-app` (non la cartella), inclusa la sottocartella `icons`.
 
-### 3. Cloudflare Pages / Vercel — CDN globale, deploy da repo
-Dopo aver fatto il push su GitHub (passo 2):
-- **Cloudflare Pages**: https://pages.cloudflare.com → Connect to Git → seleziona il repo →
-  build command vuoto, output dir `/` (root) → Deploy.
-- **Vercel**: https://vercel.com/new → importa il repo → framework "Other" → Deploy.
+### 2. Netlify Drop (link in 30 secondi)
+https://app.netlify.com/drop → trascina la cartella `lente-app`.
 
-Entrambi danno un link HTTPS e ridistribuiscono a ogni `git push`.
+### 3. Cloudflare Pages / Vercel
+Collega il repo, build vuota, output `/` (root).
 
-## Requisiti PWA
-- L'installazione e l'offline richiedono **HTTPS** (Netlify/Pages/Cloudflare/Vercel lo danno
-  in automatico). In locale puoi testare con `python3 -m http.server` su `http://localhost`.
-- Aperta come file singolo (`file://`) l'app **funziona comunque**: solo il service worker
-  e il pulsante "Installa" restano disattivati.
-
-## Sicurezza (promemoria)
-La steganografia **occulta**, non garantisce riservatezza: i caratteri a larghezza zero sono
-rilevabili e spesso rimossi da sanitizzatori HTML, normalizzazione NFKC e molti DLP/WAF.
-Per confidenzialità reale usa **sempre** la passphrase (AES-GCM): il tag di autenticazione
-fa fallire l'estrazione se la chiave è errata o i dati sono stati manomessi.
+## Note tecniche
+- L'estrazione del testo usa **pdf.js** caricato da `cdnjs`. Il primo caricamento richiede
+  rete; il service worker poi lo mette in cache per l'uso offline.
+- Richiede **HTTPS** per installazione e offline (Pages/Netlify/Cloudflare/Vercel lo danno).
+  In locale: `python3 -m http.server` su `http://localhost`.
+- I PDF cifrati non permettono l'estrazione del testo (lo strumento lo segnala): il controllo
+  steganografia sul testo non si applica, ma gli altri controlli (struttura, coda, entropia) sì.

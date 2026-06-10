@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Inchiostro UV — steganografia testuale</title>
+<title>Lente UV — analisi forense PDF</title>
 <meta name="theme-color" content="#16131c">
-<meta name="description" content="Nascondi messaggi dentro testo normale con caratteri a larghezza zero e cifratura AES-256-GCM.">
+<meta name="description" content="Analizza un PDF nel browser e scopri dati nascosti, file incorporati, JavaScript, cifratura e steganografia testuale. Niente upload: tutto resta sul dispositivo.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icons/apple-touch.png">
@@ -30,277 +30,238 @@
     padding:max(16px,env(safe-area-inset-top)) clamp(16px,4vw,40px) 40px;}
   .wrap{max-width:860px;margin:0 auto}
   .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.32em;
-    text-transform:uppercase;color:var(--uv);opacity:.85}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--uv);opacity:.85}
   #installBtn{display:none}
+  button{font-family:var(--sans);font-size:13.5px;font-weight:550;cursor:pointer;border-radius:9px;
+    padding:10px 16px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);transition:.15s}
+  button:hover{border-color:var(--uv-soft)}
+  button:focus-visible{outline:2px solid var(--uv);outline-offset:2px}
   h1{font-size:clamp(26px,5vw,38px);margin:.1em 0 .15em;font-weight:650;letter-spacing:-.02em}
   h1 .uv{color:var(--uv);text-shadow:0 0 18px var(--glow)}
-  .lede{color:var(--muted);max-width:60ch;font-size:14.5px}
-  .panel{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);
-    border-radius:14px;padding:20px;margin-top:18px}
-  .panel h2{font-size:13px;font-family:var(--mono);letter-spacing:.16em;
-    text-transform:uppercase;color:var(--muted);margin:0 0 16px;font-weight:600;
-    display:flex;align-items:center;gap:10px}
-  .panel h2::before{content:"";width:7px;height:7px;border-radius:50%;
-    background:var(--uv);box-shadow:0 0 10px var(--glow)}
-  label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px;
-    font-family:var(--mono);letter-spacing:.04em}
-  textarea,input[type=text],input[type=password]{width:100%;background:var(--bg);
-    border:1px solid var(--line);border-radius:9px;color:var(--ink);
-    padding:11px 13px;font-family:var(--mono);font-size:13px;resize:vertical}
-  textarea{min-height:84px}
-  textarea:focus,input:focus{outline:none;border-color:var(--uv-soft);
-    box-shadow:0 0 0 3px rgba(163,104,255,.18)}
-  .row{margin-bottom:14px}
-  .grid{display:grid;gap:14px}
-  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:4px}
-  button{font-family:var(--sans);font-size:13.5px;font-weight:550;cursor:pointer;
-    border-radius:9px;padding:10px 16px;border:1px solid var(--line);
-    background:var(--surface-2);color:var(--ink);transition:.15s}
-  button:hover{border-color:var(--uv-soft)}
-  button.primary{background:linear-gradient(180deg,var(--uv),var(--uv-soft));
-    border-color:transparent;color:#120e1c;font-weight:650;
-    box-shadow:0 6px 22px -8px var(--glow)}
-  button.primary:hover{filter:brightness(1.06)}
-  button:focus-visible{outline:2px solid var(--uv);outline-offset:2px}
-  .out{position:relative;background:var(--bg);border:1px dashed var(--line);border-radius:9px;
-    padding:12px 13px;font-family:var(--mono);font-size:13px;min-height:44px;
-    white-space:pre-wrap;word-break:break-word;color:var(--ink)}
-  .out:empty::before{content:"— in attesa —";color:var(--faint)}
-  .out .uvmark{color:var(--uv);opacity:0;transition:.2s;font-weight:700}
-  .out.reveal .uvmark{opacity:1;text-shadow:0 0 8px var(--glow)}
-  /* signature: blacklight sweep on reveal */
-  .out.sweep::after{content:"";position:absolute;inset:0;pointer-events:none;
-    background:linear-gradient(105deg,transparent 35%,var(--glow) 50%,transparent 65%);
-    transform:translateX(-120%);animation:sweep .9s ease-out 1}
-  @keyframes sweep{to{transform:translateX(120%)}}
-  .meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-family:var(--mono);
-    font-size:11.5px;color:var(--faint)}
-  .meta b{color:var(--muted);font-weight:500}
-  .status{font-family:var(--mono);font-size:12.5px;margin-top:10px;min-height:18px}
-  .status.ok{color:var(--ok)} .status.warn{color:var(--warn)} .status.err{color:var(--err)}
-  .toggle{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);
-    font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
-  .toggle input{accent-color:var(--uv);width:15px;height:15px}
-  .note{font-size:12.5px;color:var(--muted);background:var(--surface-2);
-    border-left:2px solid var(--uv-soft);border-radius:0 8px 8px 0;
-    padding:12px 14px;margin-top:18px;line-height:1.55}
+  .lede{color:var(--muted);max-width:62ch;font-size:14.5px}
+  /* drop zone */
+  .drop{margin-top:20px;border:1.5px dashed var(--line);border-radius:16px;background:var(--surface);
+    padding:38px 20px;text-align:center;cursor:pointer;transition:.18s}
+  .drop:hover,.drop.over{border-color:var(--uv-soft);background:var(--surface-2);box-shadow:0 0 0 4px rgba(163,104,255,.10)}
+  .drop .icon{font-size:30px;line-height:1}
+  .drop .big{font-size:15px;font-weight:600;margin:10px 0 4px}
+  .drop .sub{font-size:12.5px;color:var(--muted)}
+  .privacy{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--faint);text-align:center}
+  /* report */
+  #report{margin-top:22px;display:none}
+  .verdict{border-radius:14px;padding:16px 18px;margin-bottom:16px;border:1px solid var(--line);background:var(--surface)}
+  .verdict.clean{border-color:#2f5d45;background:linear-gradient(180deg,rgba(110,231,168,.08),transparent)}
+  .verdict.flag{border-color:#6b5530;background:linear-gradient(180deg,rgba(240,184,94,.10),transparent)}
+  .verdict h2{margin:0 0 6px;font-size:16px}
+  .verdict p{margin:0;font-size:13px;color:var(--muted)}
+  .verdict ul{margin:8px 0 0;padding-left:18px;font-size:13px}
+  .verdict li{margin:3px 0}
+  .sec{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+  .sec > .head{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line);font-weight:600}
+  .item{display:flex;gap:12px;align-items:flex-start;padding:11px 16px}
+  .item + .item{border-top:1px solid var(--line)}
+  .dot{width:8px;height:8px;border-radius:50%;margin-top:6px;flex:none}
+  .dot.ok{background:var(--ok)} .dot.warn{background:var(--warn);box-shadow:0 0 8px rgba(240,184,94,.5)}
+  .dot.err{background:var(--err);box-shadow:0 0 8px rgba(255,122,138,.5)} .dot.info{background:var(--faint)}
+  .item .txt{font-size:13.5px}
+  .item .txt b{color:var(--ink)} .item .txt span{color:var(--muted)}
+  .item .txt code{font-family:var(--mono);font-size:12px;color:var(--uv)}
+  .filemeta{font-family:var(--mono);font-size:12px;color:var(--muted);margin:2px 0 4px}
+  .note{font-size:12.5px;color:var(--muted);background:var(--surface-2);border-left:2px solid var(--uv-soft);
+    border-radius:0 8px 8px 0;padding:12px 14px;margin-top:18px;line-height:1.55}
   .note code{color:var(--uv);font-family:var(--mono)}
-  @media (prefers-reduced-motion:reduce){*{transition:none!important}.out.sweep::after{display:none}}
+  .spin{display:none;margin-top:20px;font-family:var(--mono);font-size:13px;color:var(--uv)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div class="eyebrow">Steganografia testuale · Web Crypto</div>
+    <div class="eyebrow">Analisi forense PDF · 100% locale</div>
     <button id="installBtn">Installa app</button>
   </div>
   <header>
-    <h1>Inchiostro <span class="uv">UV</span></h1>
-    <p class="lede">Annega un messaggio dentro un testo perfettamente normale usando
-    caratteri Unicode a larghezza zero, invisibili a chi legge. Opzionalmente lo cifri
-    con AES-256-GCM, così il payload non è solo nascosto ma anche illeggibile senza chiave.</p>
+    <h1>Lente <span class="uv">UV</span></h1>
+    <p class="lede">Trascina un PDF e scopri cosa nasconde: dati aggiunti dopo la fine del file,
+    file incorporati, JavaScript e azioni automatiche, protezione/cifratura, stream sospetti e
+    steganografia testuale a caratteri invisibili. Il file non viene caricato da nessuna parte —
+    tutta l'analisi avviene nel tuo browser.</p>
   </header>
 
-  <section class="panel">
-    <h2>Nascondi</h2>
-    <div class="grid">
-      <div class="row">
-        <label for="cover">Testo di copertura (quello che il lettore umano vede)</label>
-        <textarea id="cover">Buongiorno, in allegato l'offerta aggiornata per i ricambi richiesti. Resto a disposizione per qualsiasi chiarimento.</textarea>
-      </div>
-      <div class="row">
-        <label for="secret">Messaggio segreto da occultare</label>
-        <textarea id="secret">DOC-REF:7741 | agente:Marco R. | sconto-max:12%</textarea>
-      </div>
-      <div class="row">
-        <label for="passEmbed">Passphrase di cifratura — opzionale (vuoto = solo occultamento)</label>
-        <input id="passEmbed" type="password" placeholder="es. chiave condivisa col destinatario">
-      </div>
-    </div>
-    <div class="controls">
-      <button class="primary" id="btnEmbed">Genera testo</button>
-      <button id="btnCopy">Copia</button>
-      <button id="btnShare">Condividi</button>
-      <label class="toggle"><input type="checkbox" id="revealEmbed"> rivela i caratteri nascosti</label>
-    </div>
-    <div class="row" style="margin-top:16px">
-      <label>Output — incollalo in una mail, chat o campo PWA</label>
-      <div class="out" id="embedOut"></div>
-    </div>
-    <div class="meta" id="embedMeta"></div>
-    <div class="status" id="embedStatus"></div>
-  </section>
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="Carica un PDF">
+    <div class="icon">🔎</div>
+    <div class="big">Trascina qui un PDF, o clicca per sceglierlo</div>
+    <div class="sub">Nessun limite di dimensione imposto · formati .pdf</div>
+    <input type="file" id="file" accept="application/pdf,.pdf" hidden>
+  </div>
+  <div class="privacy">⛨ il documento resta sul dispositivo · nessun server, nessun upload</div>
 
-  <section class="panel">
-    <h2>Rivela</h2>
-    <div class="grid">
-      <div class="row">
-        <label for="carrier">Incolla qui il testo sospetto</label>
-        <textarea id="carrier"></textarea>
-      </div>
-      <div class="row">
-        <label for="passExtract">Passphrase — se il payload era cifrato</label>
-        <input id="passExtract" type="password" placeholder="lascia vuoto se non cifrato">
-      </div>
-    </div>
-    <div class="controls">
-      <button class="primary" id="btnExtract">Estrai</button>
-      <button id="btnScan">Solo analizza (pentest)</button>
-    </div>
-    <div class="row" style="margin-top:16px">
-      <label>Messaggio recuperato</label>
-      <div class="out" id="extractOut"></div>
-    </div>
-    <div class="status" id="extractStatus"></div>
-  </section>
+  <div class="spin" id="spin">analisi in corso…</div>
+  <div id="report"></div>
 
   <div class="note">
-    <b>Per il tuo lavoro:</b> i caratteri usati sono <code>U+200B</code> e <code>U+200C</code>.
-    Sopravvivono al copia-incolla di testo semplice ma vengono spesso rimossi da sanitizzatori
-    HTML, normalizzazione Unicode (NFKC) e molti DLP/WAF. In ottica <b>pentest</b>, “Solo analizza”
-    conta i caratteri invisibili presenti: è il segnale che un rilevatore cerca. La steganografia
-    <b>nasconde</b>, non protegge: per riservatezza reale abbina sempre la cifratura.
+    <b>Cosa fa e cosa no.</b> Questo strumento <b>rileva</b> anomalie, non <b>decifra</b>:
+    se trova un blocco cifrato te lo segnala, ma il contenuto resta illeggibile senza la chiave.
+    E “nessun indicatore” non è una prova di innocenza — la steganografia dentro i pixel di
+    un'immagine (LSB) o tecniche su misura sfuggono a un controllo generico. Per quei casi
+    servono strumenti dedicati (<code>pdfid</code>, <code>pdf-parser</code>, <code>binwalk</code>).
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-const BIT0='\u200B', BIT1='\u200C';
-const ZW_RE=/[\u200B\u200C]/g;
-const enc=new TextEncoder(), dec=new TextDecoder();
+const ZW={'\u200b':'ZWSP','\u200c':'ZWNJ','\u200d':'ZWJ','\u2060':'WORD-JOINER','\ufeff':'BOM/ZWNBSP','\u00ad':'SOFT-HYPHEN'};
+const RISK=['/JavaScript','/JS','/OpenAction','/AA','/Launch','/EmbeddedFile','/RichMedia','/AcroForm','/XFA','/GoToR','/SubmitForm','/URI'];
+const DANGER=['/JavaScript','/JS','/Launch','/OpenAction','/AA','/EmbeddedFile'];
 const $=id=>document.getElementById(id);
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-const bytesToBits=b=>{const o=[];for(const x of b)for(let i=7;i>=0;i--)o.push((x>>i)&1);return o;};
-const bitsToBytes=bits=>{const o=[];for(let i=0;i+8<=bits.length;i+=8){let v=0;for(let j=0;j<8;j++)v=(v<<1)|bits[i+j];o.push(v);}return Uint8Array.from(o);};
-const bitsToZW=bits=>bits.map(b=>b?BIT1:BIT0).join('');
-const zwToBits=s=>{const o=[];for(const c of s){if(c===BIT0)o.push(0);else if(c===BIT1)o.push(1);}return o;};
+function entropy(bytes){
+  if(!bytes.length) return 0;
+  const c=new Uint32Array(256); for(const b of bytes) c[b]++;
+  let e=0,n=bytes.length; for(const v of c){ if(v){const p=v/n; e-=p*Math.log2(p);} }
+  return e;
+}
+const latin1=bytes=>new TextDecoder('latin1').decode(bytes);
 
-function frame(flag,body){
-  const p=new Uint8Array(1+body.length);p[0]=flag;p.set(body,1);
-  const len=p.length;
-  const h=Uint8Array.from([(len>>>24)&255,(len>>>16)&255,(len>>>8)&255,len&255]);
-  const a=new Uint8Array(4+p.length);a.set(h,0);a.set(p,4);return a;
-}
-function deframe(a){
-  if(a.length<4)return null;
-  const len=(a[0]<<24)|(a[1]<<16)|(a[2]<<8)|a[3];
-  if(len<1||4+len>a.length)return null;
-  const p=a.slice(4,4+len);return{flag:p[0],body:p.slice(1)};
-}
-async function deriveKey(pass,salt){
-  const km=await crypto.subtle.importKey('raw',enc.encode(pass),'PBKDF2',false,['deriveKey']);
-  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},km,
-    {name:'AES-GCM',length:256},false,['encrypt','decrypt']);
-}
-async function encryptBody(plain,pass){
-  const salt=crypto.getRandomValues(new Uint8Array(16));
-  const iv=crypto.getRandomValues(new Uint8Array(12));
-  const k=await deriveKey(pass,salt);
-  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},k,plain));
-  const b=new Uint8Array(28+ct.length);b.set(salt,0);b.set(iv,16);b.set(ct,28);return b;
-}
-async function decryptBody(b,pass){
-  const salt=b.slice(0,16),iv=b.slice(16,28),ct=b.slice(28);
-  const k=await deriveKey(pass,salt);
-  return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv},k,ct));
-}
-async function embed(cover,secret,pass){
-  const clean=cover.replace(ZW_RE,'');
-  let flag=0, body=enc.encode(secret);
-  if(pass){flag=1;body=await encryptBody(enc.encode(secret),pass);}
-  const zw=bitsToZW(bytesToBits(frame(flag,body)));
-  const idx=clean.indexOf(' ');
-  return idx>=0 ? clean.slice(0,idx+1)+zw+clean.slice(idx+1) : clean+zw;
-}
-async function extract(carrier,pass){
-  const bits=zwToBits(carrier);
-  if(bits.length<32) throw new Error('nessun payload nascosto trovato');
-  const f=deframe(bitsToBytes(bits));
-  if(!f) throw new Error('payload assente o corrotto');
-  if(f.flag===1){
-    if(!pass) throw new Error('payload cifrato: serve la passphrase');
-    return dec.decode(await decryptBody(f.body,pass));
+function analyzeBytes(bytes){
+  const s=latin1(bytes); const f={findings:[],sections:[]};
+  f.ver=(s.match(/^%PDF-(\d\.\d)/)||[])[1]||'?';
+  f.size=bytes.length;
+
+  // 1 coda dopo EOF
+  const idx=[...s.matchAll(/%%EOF/g)].map(m=>m.index); f.eofCount=idx.length;
+  f.tail=0;
+  if(idx.length){
+    let after=bytes.slice(idx[idx.length-1]+5),k=0;
+    while(k<after.length && [13,10,32,9].includes(after[k])) k++;
+    f.tail=after.length-k; f.tailEntropy=f.tail?entropy(after.slice(k)):0;
+    if(f.tail>0) f.findings.push(`${f.tail} byte presenti dopo l'ultimo %%EOF`);
   }
-  return dec.decode(f.body);
-}
-
-function renderReveal(el,text,on){
-  el.classList.toggle('reveal',on);
-  if(!on){el.textContent=text;return;}
-  el.innerHTML='';
-  for(const ch of text){
-    if(ch===BIT0||ch===BIT1){
-      const s=document.createElement('span');s.className='uvmark';s.textContent='·';el.appendChild(s);
-    } else el.appendChild(document.createTextNode(ch));
+  // 2 indicatori
+  f.hits={}; for(const t of RISK){const n=s.split(t).length-1; if(n) f.hits[t]=n;}
+  if(DANGER.some(k=>f.hits[k] && k!=='/EmbeddedFile')) f.findings.push('codice o azioni automatiche (/JavaScript, /OpenAction…)');
+  // 3 cifratura + embedded + meta
+  f.enc=/\/Encrypt\b/.test(s); if(f.enc) f.findings.push('il PDF è cifrato o protetto da password');
+  f.emb=s.split('/EmbeddedFile').length-1; if(f.emb) f.findings.push(`${f.emb} riferimento/i a file incorporati`);
+  f.meta={};
+  for(const k of ['Author','Producer','Creator','Title','Subject','CreationDate','ModDate']){
+    const m=s.match(new RegExp('/'+k+'\\s*\\(((?:\\\\.|[^)\\\\]){0,140})\\)'));
+    if(m) f.meta[k]=m[1].replace(/\\([()\\])/g,'$1');
   }
-  el.classList.remove('sweep'); void el.offsetWidth; el.classList.add('sweep');
+  // 5 stream alta entropia
+  let high=0,total=0; const re=/stream\r?\n/g; let m;
+  while((m=re.exec(s))){const st=m.index+m[0].length; const end=s.indexOf('endstream',st); if(end<0)break;
+    const blob=bytes.slice(st,end); total++; if(blob.length>64 && entropy(blob)>7.5) high++; re.lastIndex=end+9;}
+  f.streams=total; f.highStreams=high;
+  return f;
 }
 
-let lastCarrier='';
-const setStatus=(el,msg,kind)=>{el.textContent=msg;el.className='status '+(kind||'');};
-
-$('btnEmbed').onclick=async()=>{
-  const st=$('embedStatus');
+async function analyzeText(bytes){
+  const out={ok:false,counts:{},total:0,note:''};
+  if(!window.pdfjsLib){ out.note='libreria testo non disponibile (offline al primo avvio)'; return out; }
   try{
-    const cover=$('cover').value, secret=$('secret').value, pass=$('passEmbed').value;
-    if(!secret){setStatus(st,'inserisci un messaggio segreto','warn');return;}
-    lastCarrier=await embed(cover,secret,pass);
-    renderReveal($('embedOut'),lastCarrier,$('revealEmbed').checked);
-    const hidden=(lastCarrier.match(ZW_RE)||[]).length;
-    $('embedMeta').innerHTML=
-      `<span><b>visibili</b> ${[...lastCarrier.replace(ZW_RE,'')].length} car.</span>`+
-      `<span><b>nascosti</b> ${hidden} car.</span>`+
-      `<span><b>modo</b> ${pass?'AES-256-GCM':'solo occultamento'}</span>`;
-    setStatus(st,pass?'fatto · payload cifrato e occultato':'fatto · payload occultato (non cifrato)',pass?'ok':'warn');
-  }catch(e){setStatus(st,'errore: '+e.message,'err');}
-};
-$('revealEmbed').onchange=e=>renderReveal($('embedOut'),lastCarrier,e.target.checked);
+    const doc=await pdfjsLib.getDocument({data:bytes.slice(), disableFontFace:true}).promise;
+    let text='';
+    for(let i=1;i<=doc.numPages;i++){
+      const page=await doc.getPage(i); const tc=await page.getTextContent();
+      text+=tc.items.map(it=>it.str).join('');
+    }
+    out.hasText=!!text.trim();
+    for(const ch of text){ if(ZW[ch]){ out.counts[ch]=(out.counts[ch]||0)+1; out.total++; } }
+    out.ok=true;
+  }catch(e){ out.note = /password/i.test(e.message||e.name||'') ? 'testo non leggibile: PDF protetto da password' : 'testo non estraibile (PDF scansionato/immagine)'; }
+  return out;
+}
 
-$('btnCopy').onclick=async()=>{
-  if(!lastCarrier){setStatus($('embedStatus'),'niente da copiare','warn');return;}
-  try{await navigator.clipboard.writeText(lastCarrier);setStatus($('embedStatus'),'copiato negli appunti','ok');}
-  catch{setStatus($('embedStatus'),'copia non riuscita (permessi)','err');}
-};
-$('btnShare').onclick=async()=>{
-  if(!lastCarrier){setStatus($('embedStatus'),'genera prima il testo','warn');return;}
-  if(navigator.share){
-    try{await navigator.share({text:lastCarrier});setStatus($('embedStatus'),'condiviso','ok');}
-    catch{/* annullato */}
-  } else {
-    try{await navigator.clipboard.writeText(lastCarrier);setStatus($('embedStatus'),'condivisione non supportata · copiato negli appunti','warn');}
-    catch{setStatus($('embedStatus'),'condivisione non supportata','err');}
-  }
-};
+function item(status,html){ return `<div class="item"><span class="dot ${status}"></span><div class="txt">${html}</div></div>`; }
+function section(title,items){ return `<div class="sec"><div class="head">${title}</div>${items.join('')}</div>`; }
 
-$('btnExtract').onclick=async()=>{
-  const st=$('extractStatus');
+function render(f,t,filename){
+  const R=$('report');
+  const fmtKB=(f.size/1024).toFixed(0);
+  // verdict
+  const flags=[...f.findings];
+  if(t.total) flags.push(`${t.total} caratteri invisibili nel testo (steganografia)`);
+  const clean=flags.length===0;
+  let v=`<div class="verdict ${clean?'clean':'flag'}"><h2>${clean?'Nessun indicatore evidente':'Elementi da verificare'}</h2>`;
+  v+=`<p class="filemeta">${filename} · ${fmtKB} KB · PDF ${f.ver}</p>`;
+  if(clean){ v+=`<p>Nessuno dei controlli ha trovato anomalie. Ricorda: non è una prova di innocenza, stego nei pixel o tecniche dedicate sfuggono a questo controllo.</p>`; }
+  else { v+='<ul>'+flags.map(x=>`<li>${x}</li>`).join('')+'</ul>'; }
+  v+='</div>';
+
+  // sections
+  const secs=[];
+  secs.push(section('Coda del file',[
+    f.tail>0 ? item('err',`<b>${f.tail} byte dopo l'ultimo <code>%%EOF</code></b> <span>(entropia ${f.tailEntropy.toFixed(2)}/8) — possibile payload appeso al file</span>`)
+             : item('ok','<b>Niente dati dopo l\'ultimo <code>%%EOF</code></b>'),
+    f.eofCount>1 ? item('info',`<span>${f.eofCount} marcatori <code>%%EOF</code> — aggiornamenti incrementali o revisioni</span>`):''
+  ].filter(Boolean)));
+
+  const hitItems=Object.entries(f.hits).map(([k,n])=>{
+    const st=DANGER.includes(k)?(k==='/EmbeddedFile'?'warn':'err'):'info';
+    return item(st,`<b><code>${k}</code></b> <span>×${n}</span>`);
+  });
+  secs.push(section('Indicatori strutturali', hitItems.length?hitItems:[item('ok','<b>Nessun indicatore a rischio</b>')]));
+
+  const protItems=[];
+  protItems.push(f.enc?item('err','<b>PDF cifrato o protetto da password</b>'):item('ok','<b>Non cifrato</b>'));
+  protItems.push(f.emb?item('warn',`<b>${f.emb} file incorporato/i</b> <span>(verifica se legittimi)</span>`):item('ok','<b>Nessun file incorporato</b>'));
+  const metaKeys=Object.keys(f.meta);
+  if(metaKeys.length) protItems.push(item('info','<span>'+metaKeys.map(k=>`${k}: <code>${(f.meta[k]||'').slice(0,60)}</code>`).join(' · ')+'</span>'));
+  secs.push(section('Protezione, allegati e metadati', protItems));
+
+  let tItems;
+  if(t.total){
+    tItems=[item('err',`<b>${t.total} caratteri a larghezza zero nel testo</b> <span>(~${Math.max(0,Math.floor(t.total/8)-4)} byte di payload stimati)</span>`)];
+    for(const ch in t.counts) tItems.push(item('warn',`<span><code>${ZW[ch]} (U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')})</code> ×${t.counts[ch]}</span>`));
+  } else if(t.ok && t.hasText){ tItems=[item('ok','<b>Nessun carattere invisibile nel testo</b>')];
+  } else { tItems=[item('info',`<span>${t.note||'testo non analizzato'}</span>`)]; }
+  secs.push(section('Steganografia testuale (caratteri invisibili)', tItems));
+
+  secs.push(section('Stream sospetti',[
+    f.highStreams ? item('warn',`<b>${f.highStreams} stream ad alta entropia</b> <span>su ${f.streams} totali — cifrato, compresso o media: da confrontare col tipo dichiarato</span>`)
+                  : item('ok',`<b>Nessuno stream ad entropia anomala</b> <span>(${f.streams} stream analizzati)</span>`)
+  ]));
+
+  R.innerHTML=v+secs.join('');
+  R.style.display='block';
+}
+
+async function run(file){
+  $('report').style.display='none'; $('spin').style.display='block';
   try{
-    const msg=await extract($('carrier').value,$('passExtract').value);
-    $('extractOut').textContent=msg;
-    setStatus(st,'messaggio recuperato · integrità verificata','ok');
+    const bytes=new Uint8Array(await file.arrayBuffer());
+    if(latin1(bytes.slice(0,8)).indexOf('%PDF-')<0){
+      $('spin').style.display='none';
+      $('report').innerHTML='<div class="verdict flag"><h2>Non sembra un PDF</h2><p>L\'intestazione %PDF- non è stata trovata all\'inizio del file.</p></div>';
+      $('report').style.display='block'; return;
+    }
+    const f=analyzeBytes(bytes);
+    const t=await analyzeText(bytes);
+    $('spin').style.display='none';
+    render(f,t,file.name);
   }catch(e){
-    $('extractOut').textContent='';
-    const k=/passphrase|cifrato/.test(e.message)?'warn':'err';
-    setStatus(st, (e.name==='OperationError')
-      ?'passphrase errata o dati manomessi (GCM)':'errore: '+e.message, k);
+    $('spin').style.display='none';
+    $('report').innerHTML='<div class="verdict flag"><h2>Errore in analisi</h2><p>'+(e.message||e)+'</p></div>';
+    $('report').style.display='block';
   }
-};
-$('btnScan').onclick=()=>{
-  const t=$('carrier').value;
-  const hidden=(t.match(ZW_RE)||[]).length;
-  const st=$('extractStatus');
-  if(hidden===0){setStatus(st,'nessun carattere invisibile rilevato','');return;}
-  setStatus(st,`sospetto: ${hidden} caratteri a larghezza zero (~${Math.max(0,Math.floor(hidden/8)-4)} byte di payload)`,'warn');
-};
+}
 
-// ---- PWA: install prompt + service worker ----
-let deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installBtn').style.display='inline-block';});
-$('installBtn').onclick=async()=>{
-  if(!deferredPrompt)return;
-  deferredPrompt.prompt();await deferredPrompt.userChoice;
-  deferredPrompt=null;$('installBtn').style.display='none';
-};
+// drop zone wiring
+const drop=$('drop'), fileInput=$('file');
+drop.onclick=()=>fileInput.click();
+drop.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();fileInput.click();} };
+fileInput.onchange=e=>{ if(e.target.files[0]) run(e.target.files[0]); };
+;['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+;['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>{ const file=e.dataTransfer.files[0]; if(file) run(file); });
+
+// PWA
+let dp=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;$('installBtn').style.display='inline-block';});
+$('installBtn').onclick=async()=>{ if(!dp)return; dp.prompt(); await dp.userChoice; dp=null; $('installBtn').style.display='none'; };
 window.addEventListener('appinstalled',()=>{$('installBtn').style.display='none';});
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('service-worker.js').catch(()=>{}));
