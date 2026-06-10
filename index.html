@@ -67,6 +67,14 @@
   .item .txt{font-size:13.5px}
   .item .txt b{color:var(--ink)} .item .txt span{color:var(--muted)}
   .item .txt code{font-family:var(--mono);font-size:12px;color:var(--uv)}
+  .msgbox{margin-top:8px;font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--bg);
+    border:1px solid var(--uv-soft);border-radius:8px;padding:10px 12px;white-space:pre-wrap;word-break:break-word}
+  .msgbox.err{border-color:var(--err);color:var(--err)}
+  .decrow{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .decrow input{flex:1;min-width:160px;background:var(--bg);border:1px solid var(--line);border-radius:8px;
+    color:var(--ink);padding:8px 11px;font-family:var(--mono);font-size:12.5px}
+  .decrow input:focus{outline:none;border-color:var(--uv-soft)}
+  .decrow button{font-size:12.5px;padding:8px 14px}
   .filemeta{font-family:var(--mono);font-size:12px;color:var(--muted);margin:2px 0 4px}
   .note{font-size:12.5px;color:var(--muted);background:var(--surface-2);border-left:2px solid var(--uv-soft);
     border-radius:0 8px 8px 0;padding:12px 14px;margin-top:18px;line-height:1.55}
@@ -101,11 +109,11 @@
   <div id="report"></div>
 
   <div class="note">
-    <b>Cosa fa e cosa no.</b> Questo strumento <b>rileva</b> anomalie, non <b>decifra</b>:
-    se trova un blocco cifrato te lo segnala, ma il contenuto resta illeggibile senza la chiave.
-    E “nessun indicatore” non è una prova di innocenza — la steganografia dentro i pixel di
-    un'immagine (LSB) o tecniche su misura sfuggono a un controllo generico. Per quei casi
-    servono strumenti dedicati (<code>pdfid</code>, <code>pdf-parser</code>, <code>binwalk</code>).
+    <b>Cosa fa.</b> Rileva le anomalie e, se trova un messaggio nascosto in formato Inchiostro UV,
+    lo <b>mostra in chiaro</b> (o chiede la passphrase se è cifrato con AES-256). “Nessun indicatore”
+    non è però una prova di innocenza — la steganografia dentro i pixel di un'immagine (LSB) o
+    tecniche su misura sfuggono a un controllo generico. Per quei casi servono strumenti dedicati
+    (<code>pdfid</code>, <code>pdf-parser</code>, <code>binwalk</code>).
   </div>
 </div>
 
@@ -124,6 +132,26 @@ function entropy(bytes){
   return e;
 }
 const latin1=bytes=>new TextDecoder('latin1').decode(bytes);
+const enc=new TextEncoder(), dec=new TextDecoder();
+
+// --- decodifica payload steganografico (stesso formato di Inchiostro UV) ---
+const BIT0='\u200b', BIT1='\u200c';
+const zwToBits=str=>{const o=[];for(const c of str){if(c===BIT0)o.push(0);else if(c===BIT1)o.push(1);}return o;};
+const bitsToBytes=bits=>{const o=[];for(let i=0;i+8<=bits.length;i+=8){let v=0;for(let j=0;j<8;j++)v=(v<<1)|bits[i+j];o.push(v);}return Uint8Array.from(o);};
+function deframePayload(zwString){
+  const a=bitsToBytes(zwToBits(zwString));
+  if(a.length<5) return null;
+  const len=(a[0]<<24)|(a[1]<<16)|(a[2]<<8)|a[3];
+  if(len<1||4+len>a.length) return null;
+  const p=a.slice(4,4+len);
+  return {flag:p[0], body:p.slice(1)};
+}
+async function decryptBody(b,pass){
+  const salt=b.slice(0,16), iv=b.slice(16,28), ct=b.slice(28);
+  const km=await crypto.subtle.importKey('raw',enc.encode(pass),'PBKDF2',false,['deriveKey']);
+  const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+  return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv},k,ct));
+}
 
 function analyzeBytes(bytes){
   const s=latin1(bytes); const f={findings:[],sections:[]};
@@ -165,9 +193,10 @@ function analyzeBytes(bytes){
   }
   // 4 caratteri a larghezza zero sui BYTE grezzi (cattura payload appesi/UTF-8 letterali)
   const STEGO={'\u200b':1,'\u200c':1,'\u200d':1};
-  f.rawZW=0; f.rawZWcounts={};
+  f.rawZW=0; f.rawZWcounts={}; f.zwString='';
   { const utf=new TextDecoder('utf-8').decode(bytes);
-    for(const ch of utf){ if(STEGO[ch]){ f.rawZW++; f.rawZWcounts[ch]=(f.rawZWcounts[ch]||0)+1; } } }
+    for(const ch of utf){ if(STEGO[ch]){ f.rawZW++; f.rawZWcounts[ch]=(f.rawZWcounts[ch]||0)+1;
+      if(ch==='\u200b'||ch==='\u200c') f.zwString+=ch; } } }
   if(f.rawZW) f.findings.push(`${f.rawZW} caratteri a larghezza zero nel file (steganografia testuale)`);
   return f;
 }
@@ -232,6 +261,15 @@ function render(f,t,filename){
   if(zwTotal){
     tItems=[item('err',`<b>${zwTotal} caratteri a larghezza zero</b> <span>(~${Math.max(0,Math.floor(zwTotal/8)-4)} byte di payload stimati)</span>`)];
     for(const ch in zwCounts) tItems.push(item('warn',`<span><code>${ZW[ch]} (U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')})</code> ×${zwCounts[ch]}</span>`));
+    if(f.hiddenMsg!==undefined){
+      tItems.push(item('err',`<b>Messaggio nascosto (in chiaro):</b><div class="msgbox">${escapeHtml(f.hiddenMsg)}</div>`));
+    } else if(f.hiddenEnc){
+      tItems.push(item('warn',`<b>Messaggio nascosto cifrato (AES-256)</b> <span>— inserisci la passphrase per leggerlo</span>`
+        +`<div class="decrow"><input id="lentePass" type="password" placeholder="passphrase"><button id="lenteDecrypt">Decifra</button></div>`
+        +`<div class="msgbox" id="lenteMsg" style="display:none"></div>`));
+    } else if(f.zwString){
+      tItems.push(item('info','<span>payload presente ma non in formato Inchiostro UV (non decodificabile)</span>'));
+    }
   } else if(t.ok && t.hasText){ tItems=[item('ok','<b>Nessun carattere invisibile rilevato</b>')];
   } else { tItems=[item('ok','<b>Nessun carattere invisibile nei byte del file</b>')]; }
   secs.push(section('Steganografia testuale (caratteri invisibili)', tItems));
@@ -243,7 +281,18 @@ function render(f,t,filename){
 
   R.innerHTML=v+secs.join('');
   R.style.display='block';
+  if(f.hiddenEnc){
+    const btn=$('lenteDecrypt');
+    if(btn) btn.onclick=async()=>{
+      const out=$('lenteMsg'); const pass=$('lentePass').value;
+      try{
+        const pt=await decryptBody(f.hiddenEnc, pass);
+        out.textContent=dec.decode(pt); out.style.display='block'; out.classList.remove('err');
+      }catch(e){ out.textContent='passphrase errata o dati manomessi'; out.style.display='block'; out.classList.add('err'); }
+    };
+  }
 }
+const escapeHtml=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 async function run(file){
   $('report').style.display='none'; $('spin').style.display='block';
@@ -256,6 +305,14 @@ async function run(file){
     }
     const f=analyzeBytes(bytes);
     const t=await analyzeText(bytes);
+    // prova a decodificare il messaggio nascosto (metodo Inchiostro UV)
+    if(f.zwString && f.zwString.length>=40){
+      const parsed=deframePayload(f.zwString);
+      if(parsed){
+        if(parsed.flag===0){ try{ f.hiddenMsg=dec.decode(parsed.body); }catch(e){} }
+        else if(parsed.flag===1){ f.hiddenEnc=parsed.body; }
+      }
+    }
     $('spin').style.display='none';
     render(f,t,file.name);
   }catch(e){
