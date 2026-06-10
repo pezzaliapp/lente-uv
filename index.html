@@ -130,6 +130,19 @@ function analyzeBytes(bytes){
   f.ver=(s.match(/^%PDF-(\d\.\d)/)||[])[1]||'?';
   f.size=bytes.length;
 
+  // mappo gli stream (dati compressi/binari): gli indicatori al loro interno sono falsi positivi
+  const ranges=[]; let high=0,total=0; { const re=/stream\r?\n/g; let m;
+    while((m=re.exec(s))){const st=m.index+m[0].length; const end=s.indexOf('endstream',st); if(end<0)break;
+      ranges.push([st,end]); const blob=bytes.slice(st,end); total++;
+      if(blob.length>64 && entropy(blob)>7.5) high++; re.lastIndex=end+9;}
+  }
+  f.streams=total; f.highStreams=high;
+  const inStream=i=>{ for(let r=0;r<ranges.length;r++){ if(i>=ranges[r][0]&&i<ranges[r][1]) return true; } return false; };
+  // un nome PDF prosegue con lettere/cifre: /AA dentro /AAAAAA+Font NON è /AA.
+  const nameChar=c=>/[A-Za-z0-9]/.test(c);
+  const countOutside=tok=>{ let n=0,i=0; while((i=s.indexOf(tok,i))>=0){
+    const next=s[i+tok.length]; if(!inStream(i) && !(next && nameChar(next))) n++; i+=tok.length; } return n; };
+
   // 1 coda dopo EOF
   const idx=[...s.matchAll(/%%EOF/g)].map(m=>m.index); f.eofCount=idx.length;
   f.tail=0;
@@ -139,22 +152,23 @@ function analyzeBytes(bytes){
     f.tail=after.length-k; f.tailEntropy=f.tail?entropy(after.slice(k)):0;
     if(f.tail>0) f.findings.push(`${f.tail} byte presenti dopo l'ultimo %%EOF`);
   }
-  // 2 indicatori
-  f.hits={}; for(const t of RISK){const n=s.split(t).length-1; if(n) f.hits[t]=n;}
+  // 2 indicatori (solo FUORI dagli stream → niente falsi positivi)
+  f.hits={}; for(const t of RISK){const n=countOutside(t); if(n) f.hits[t]=n;}
   if(DANGER.some(k=>f.hits[k] && k!=='/EmbeddedFile')) f.findings.push('codice o azioni automatiche (/JavaScript, /OpenAction…)');
   // 3 cifratura + embedded + meta
-  f.enc=/\/Encrypt\b/.test(s); if(f.enc) f.findings.push('il PDF è cifrato o protetto da password');
-  f.emb=s.split('/EmbeddedFile').length-1; if(f.emb) f.findings.push(`${f.emb} riferimento/i a file incorporati`);
+  f.enc=/\/Encrypt\b/.test(s) && !inStream(s.indexOf('/Encrypt')); if(f.enc) f.findings.push('il PDF è cifrato o protetto da password');
+  f.emb=countOutside('/EmbeddedFile'); if(f.emb) f.findings.push(`${f.emb} riferimento/i a file incorporati`);
   f.meta={};
   for(const k of ['Author','Producer','Creator','Title','Subject','CreationDate','ModDate']){
     const m=s.match(new RegExp('/'+k+'\\s*\\(((?:\\\\.|[^)\\\\]){0,140})\\)'));
     if(m) f.meta[k]=m[1].replace(/\\([()\\])/g,'$1');
   }
-  // 5 stream alta entropia
-  let high=0,total=0; const re=/stream\r?\n/g; let m;
-  while((m=re.exec(s))){const st=m.index+m[0].length; const end=s.indexOf('endstream',st); if(end<0)break;
-    const blob=bytes.slice(st,end); total++; if(blob.length>64 && entropy(blob)>7.5) high++; re.lastIndex=end+9;}
-  f.streams=total; f.highStreams=high;
+  // 4 caratteri a larghezza zero sui BYTE grezzi (cattura payload appesi/UTF-8 letterali)
+  const STEGO={'\u200b':1,'\u200c':1,'\u200d':1};
+  f.rawZW=0; f.rawZWcounts={};
+  { const utf=new TextDecoder('utf-8').decode(bytes);
+    for(const ch of utf){ if(STEGO[ch]){ f.rawZW++; f.rawZWcounts[ch]=(f.rawZWcounts[ch]||0)+1; } } }
+  if(f.rawZW) f.findings.push(`${f.rawZW} caratteri a larghezza zero nel file (steganografia testuale)`);
   return f;
 }
 
@@ -183,7 +197,7 @@ function render(f,t,filename){
   const fmtKB=(f.size/1024).toFixed(0);
   // verdict
   const flags=[...f.findings];
-  if(t.total) flags.push(`${t.total} caratteri invisibili nel testo (steganografia)`);
+  if(t.total && !f.rawZW) flags.push(`${t.total} caratteri invisibili nel testo (steganografia)`);
   const clean=flags.length===0;
   let v=`<div class="verdict ${clean?'clean':'flag'}"><h2>${clean?'Nessun indicatore evidente':'Elementi da verificare'}</h2>`;
   v+=`<p class="filemeta">${filename} · ${fmtKB} KB · PDF ${f.ver}</p>`;
@@ -213,11 +227,13 @@ function render(f,t,filename){
   secs.push(section('Protezione, allegati e metadati', protItems));
 
   let tItems;
-  if(t.total){
-    tItems=[item('err',`<b>${t.total} caratteri a larghezza zero nel testo</b> <span>(~${Math.max(0,Math.floor(t.total/8)-4)} byte di payload stimati)</span>`)];
-    for(const ch in t.counts) tItems.push(item('warn',`<span><code>${ZW[ch]} (U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')})</code> ×${t.counts[ch]}</span>`));
-  } else if(t.ok && t.hasText){ tItems=[item('ok','<b>Nessun carattere invisibile nel testo</b>')];
-  } else { tItems=[item('info',`<span>${t.note||'testo non analizzato'}</span>`)]; }
+  const zwTotal=Math.max(f.rawZW||0, t.total||0);
+  const zwCounts=(f.rawZW? f.rawZWcounts : t.counts) || {};
+  if(zwTotal){
+    tItems=[item('err',`<b>${zwTotal} caratteri a larghezza zero</b> <span>(~${Math.max(0,Math.floor(zwTotal/8)-4)} byte di payload stimati)</span>`)];
+    for(const ch in zwCounts) tItems.push(item('warn',`<span><code>${ZW[ch]} (U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4,'0')})</code> ×${zwCounts[ch]}</span>`));
+  } else if(t.ok && t.hasText){ tItems=[item('ok','<b>Nessun carattere invisibile rilevato</b>')];
+  } else { tItems=[item('ok','<b>Nessun carattere invisibile nei byte del file</b>')]; }
   secs.push(section('Steganografia testuale (caratteri invisibili)', tItems));
 
   secs.push(section('Stream sospetti',[

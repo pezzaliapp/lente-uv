@@ -1,5 +1,5 @@
 // Lente UV — service worker (offline-first)
-const CACHE = 'lente-uv-v1';
+const CACHE = 'lente-uv-v2';
 const CORE = [
   './','./index.html','./manifest.json',
   './icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch.png','./icons/favicon-32.png'
